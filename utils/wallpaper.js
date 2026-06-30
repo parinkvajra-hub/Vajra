@@ -74,15 +74,15 @@ function buildOverlaySvg(shopName, mobileNo, width = 900, height = 1600) {
 
   <!-- ═══ ZONE 2: Between dividers (y=820–1080) ═══ -->
 
-  <text x="50%" y="870" text-anchor="middle"
+  <text x="50%" y="910" text-anchor="middle"
         font-size="34" font-weight="600" fill="rgba(255,255,255,0.88)"
         font-family="Arial, Helvetica, sans-serif">कृपया अपने डिवाइस को लॉक होने से</text>
 
-  <text x="50%" y="930" text-anchor="middle"
+  <text x="50%" y="970" text-anchor="middle"
         font-size="34" font-weight="600" fill="rgba(255,255,255,0.88)"
         font-family="Arial, Helvetica, sans-serif">बचाने के लिए नियत तारीख से पहले</text>
 
-  <text x="50%" y="990" text-anchor="middle"
+  <text x="50%" y="1030" text-anchor="middle"
         font-size="34" font-weight="600" fill="rgba(255,255,255,0.88)"
         font-family="Arial, Helvetica, sans-serif">अपनी किस्त का भुगतान करें।</text>
 
