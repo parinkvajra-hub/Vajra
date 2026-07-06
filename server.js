@@ -33,11 +33,20 @@ app.use('/api/config', require('./routes/config'));
 
 // ─── Health Check ───
 app.get('/api/health', (req, res) => {
+  let fcmStatus = { initialized: false, error: 'FCM module not loaded' };
+  try {
+    const { getFcmStatus } = require('./services/fcm');
+    fcmStatus = getFcmStatus();
+  } catch (err) {
+    fcmStatus.error = err.message;
+  }
+
   res.json({
     success: true,
     message: 'Vajra Lock App Server is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    fcm: fcmStatus,
   });
 });
 
@@ -59,11 +68,13 @@ app.use((err, req, res, next) => {
   });
 });
 
+let serverInstance;
+
 // ─── Start Server ───
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    serverInstance = app.listen(PORT, () => {
       console.log(`\n🚀 Vajra Server running on http://localhost:${PORT}`);
       console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
@@ -73,6 +84,39 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+// ─── Graceful Shutdown ───
+const gracefulShutdown = async (signal) => {
+  console.log(`\n👋 Received ${signal}. Starting graceful shutdown...`);
+  
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('🏁 Express server closed.');
+    });
+  }
+  
+  try {
+    const mongoose = require('mongoose');
+    await mongoose.connection.close();
+    console.log('🔌 MongoDB connection closed.');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Error during MongoDB disconnection:', err.message);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error.stack || error);
+  process.exit(1);
+});
 
 startServer();
 
