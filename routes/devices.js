@@ -19,6 +19,14 @@ const CommandLog = require('../models/CommandLog');
 const CreditTransaction = require('../models/CreditTransaction');
 const { authenticate, authorizeAdmin, authorizeShopkeeper } = require('../middleware/auth');
 const { generateDeviceId } = require('../utils/helpers');
+const validate = require('../middleware/validator');
+
+const activateDeviceSchema = {
+  key: { required: true, requiredMessage: 'key, customerName, customerMobile, and deviceModel are required.' },
+  customerName: { required: true, requiredMessage: 'key, customerName, customerMobile, and deviceModel are required.' },
+  customerMobile: { required: true, requiredMessage: 'key, customerName, customerMobile, and deviceModel are required.' },
+  deviceModel: { required: true, requiredMessage: 'key, customerName, customerMobile, and deviceModel are required.' }
+};
 
 // ─── PUT /:deviceId/heartbeat — No auth (Android app) ───────────────
 // Must be defined BEFORE the authenticate middleware to avoid auth check
@@ -185,7 +193,7 @@ router.get('/:deviceId', async (req, res) => {
 });
 
 // ─── POST /activate — Activate a device (Shopkeeper only) ────────────
-router.post('/activate', authorizeShopkeeper, async (req, res) => {
+router.post('/activate', authorizeShopkeeper, validate(activateDeviceSchema), async (req, res) => {
   try {
     const {
       key,
@@ -197,15 +205,6 @@ router.post('/activate', authorizeShopkeeper, async (req, res) => {
       totalMonths,
       interestRate,
     } = req.body;
-
-    // Validation
-    if (!key || !customerName || !customerMobile || !deviceModel) {
-      return res.status(400).json({
-        success: false,
-        message: 'key, customerName, customerMobile, and deviceModel are required.',
-        data: {},
-      });
-    }
 
     // Step 1: Find unused activation key
     const activationKey = await ActivationKey.findOne({
@@ -259,6 +258,7 @@ router.post('/activate', authorizeShopkeeper, async (req, res) => {
       customerMobile,
       deviceModel,
       totalAmount: totalAmount || 0,
+      emiRemaining: totalAmount || 0,
       emiAmount: emiAmount || 0,
       totalEmis: totalMonths || 0,
       interestRate: interestRate || 0,
@@ -317,6 +317,12 @@ router.put('/:deviceId', async (req, res) => {
       'interestRate',
       'paidEmis',
       'emiAmount',
+      'totalAmount',
+      'emiRemaining',
+      'isCompleted',
+      'isLocked',
+      'status',
+      'appliedTags'
     ];
     const updates = {};
 

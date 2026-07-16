@@ -16,6 +16,12 @@ const Ticket = require('../models/Ticket');
 const Shopkeeper = require('../models/Shopkeeper');
 const crypto = require('crypto');
 const { authenticate, authorizeAdmin, authorizeShopkeeper, authorizeRoles } = require('../middleware/auth');
+const validate = require('../middleware/validator');
+
+const sendCommandSchema = {
+  commandId: { required: true, requiredMessage: 'commandId and commandType are required.' },
+  commandType: { required: true, requiredMessage: 'commandId and commandType are required.' }
+};
 
 // Command ID → appliedTag mapping
 const COMMAND_TAG_MAP = {
@@ -113,17 +119,9 @@ router.get('/recent', authorizeAdmin, async (req, res) => {
 });
 
 // ─── POST /:deviceId/send — Send command (Shopkeeper, online) ────────
-router.post('/:deviceId/send', authorizeRoles('shopkeeper', 'super_admin', 'support_admin'), async (req, res) => {
+router.post('/:deviceId/send', authorizeRoles('shopkeeper', 'super_admin', 'support_admin'), validate(sendCommandSchema), async (req, res) => {
   try {
     const { commandId, commandType, commandLabel, category, inputValue, mode } = req.body;
-
-    if (!commandId || !commandType) {
-      return res.status(400).json({
-        success: false,
-        message: 'commandId and commandType are required.',
-        data: {},
-      });
-    }
 
     // Verify device exists and belongs to shopkeeper (if role is shopkeeper)
     const mongoose = require('mongoose');
@@ -204,6 +202,16 @@ router.post('/:deviceId/send', authorizeRoles('shopkeeper', 'super_admin', 'supp
     if (commandId === 'lock') {
       extraData.emi_amount = device.emiAmount ? String(device.emiAmount) : '';
       extraData.emi_due_date = device.emiDueDate ? new Date(device.emiDueDate).toISOString().split('T')[0] : '';
+      
+      try {
+        const shopkeeper = await Shopkeeper.findById(device.shopkeeperId);
+        if (shopkeeper) {
+          extraData.shop_name = shopkeeper.shopName || '';
+          extraData.shop_phone = shopkeeper.mobileNo || '';
+        }
+      } catch (err) {
+        console.error('Error fetching shopkeeper details for FCM lock:', err.message);
+      }
     }
 
     const SHORT_CMD_MAP = {
@@ -274,17 +282,9 @@ router.post('/:deviceId/send', authorizeRoles('shopkeeper', 'super_admin', 'supp
 });
 
 // ─── POST /:deviceId/offline — Queue offline command ─────────────────
-router.post('/:deviceId/offline', authorizeRoles('shopkeeper', 'super_admin', 'support_admin'), async (req, res) => {
+router.post('/:deviceId/offline', authorizeRoles('shopkeeper', 'super_admin', 'support_admin'), validate(sendCommandSchema), async (req, res) => {
   try {
     const { commandId, commandType, commandLabel, category, inputValue } = req.body;
-
-    if (!commandId || !commandType) {
-      return res.status(400).json({
-        success: false,
-        message: 'commandId and commandType are required.',
-        data: {},
-      });
-    }
 
     // Verify device exists and belongs to shopkeeper (if role is shopkeeper)
     const query = { deviceId: req.params.deviceId };
