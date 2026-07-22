@@ -340,7 +340,11 @@ router.put('/:deviceId', async (req, res) => {
       });
     }
 
-    const filter = { deviceId: req.params.deviceId };
+    const mongoose = require('mongoose');
+    const isObjectId = mongoose.Types.ObjectId.isValid(req.params.deviceId);
+    const filter = isObjectId
+      ? { $or: [{ deviceId: req.params.deviceId }, { _id: req.params.deviceId }] }
+      : { deviceId: req.params.deviceId };
 
     // Shopkeepers can only update their own devices
     if (req.user.role === 'shopkeeper') {
@@ -379,7 +383,11 @@ router.put('/:deviceId', async (req, res) => {
 // ─── DELETE /:deviceId — Soft delete ─────────────────────────────────
 router.delete('/:deviceId', async (req, res) => {
   try {
-    const filter = { deviceId: req.params.deviceId };
+    const mongoose = require('mongoose');
+    const isObjectId = mongoose.Types.ObjectId.isValid(req.params.deviceId);
+    const filter = isObjectId
+      ? { $or: [{ deviceId: req.params.deviceId }, { _id: req.params.deviceId }] }
+      : { deviceId: req.params.deviceId };
 
     // Shopkeepers can only delete their own devices
     if (req.user.role === 'shopkeeper') {
