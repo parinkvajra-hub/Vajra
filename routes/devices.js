@@ -464,3 +464,166 @@ router.post('/activate', authorizeShopkeeper, validate(activateDeviceSchema), as
     return res.status(500).json({
       success: false,
       message: 'Server error activating device.',
+      data: {},
+    });
+  }
+});
+
+// ─── PUT /:deviceId — Update customer details ────────────────────────
+router.put('/:deviceId', async (req, res) => {
+  try {
+    const allowedFields = [
+      'customerName',
+      'customerMobile',
+      'deviceModel',
+      'totalEmis',
+      'interestRate',
+      'paidEmis',
+      'emiAmount',
+      'totalAmount',
+      'emiRemaining',
+      'isCompleted',
+      'isLocked',
+      'status',
+      'appliedTags'
+    ];
+    const updates = {};
+
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid fields provided for update.',
+        data: {},
+      });
+    }
+
+    const mongoose = require('mongoose');
+    const isObjectId = mongoose.Types.ObjectId.isValid(req.params.deviceId);
+    const filter = isObjectId
+      ? { $or: [{ deviceId: req.params.deviceId }, { _id: req.params.deviceId }] }
+      : { deviceId: req.params.deviceId };
+
+    // Shopkeepers can only update their own devices
+    if (req.user.role === 'shopkeeper') {
+      filter.shopkeeperId = req.user.id;
+    }
+
+    const device = await Device.findOneAndUpdate(
+      filter,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Device not found.',
+        data: {},
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Device updated successfully.',
+      data: { device },
+    });
+  } catch (error) {
+    console.error('Update device error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error updating device.',
+      data: {},
+    });
+  }
+});
+
+// ─── DELETE /:deviceId — Soft delete ─────────────────────────────────
+router.delete('/:deviceId', async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const isObjectId = mongoose.Types.ObjectId.isValid(req.params.deviceId);
+    const filter = isObjectId
+      ? { $or: [{ deviceId: req.params.deviceId }, { _id: req.params.deviceId }] }
+      : { deviceId: req.params.deviceId };
+
+    // Shopkeepers can only delete their own devices
+    if (req.user.role === 'shopkeeper') {
+      filter.shopkeeperId = req.user.id;
+    }
+
+    const device = await Device.findOneAndUpdate(
+      filter,
+      {
+        $set: {
+          isActive: false,
+          isDeleted: true,
+          deactivatedAt: Date.now(),
+        },
+      },
+      { new: true }
+    );
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Device not found.',
+        data: {},
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Device deactivated and soft-deleted.',
+      data: {},
+    });
+  } catch (error) {
+    console.error('Soft delete device error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error deleting device.',
+      data: {},
+    });
+  }
+});
+
+// ─── DELETE /:deviceId/permanent — Hard delete (Admin only) ──────────
+router.delete('/:deviceId/permanent', authorizeAdmin, async (req, res) => {
+  try {
+    const device = await Device.findOne({ deviceId: req.params.deviceId });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Device not found.',
+        data: {},
+      });
+    }
+
+    // Delete device and related command logs
+    await Promise.all([
+      CommandLog.deleteMany({ deviceId: device._id }),
+      Device.findByIdAndDelete(device._id),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Device and related logs permanently deleted.',
+      data: {},
+    });
+  } catch (error) {
+    console.error('Hard delete device error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error permanently deleting device.',
+      data: {},
+    });
+  }
+});
+
+module.exports = router;
