@@ -38,25 +38,26 @@ router.post('/activate', async (req, res) => {
     // Find if a device record was pre-created for this activation key
     let device = await Device.findOne({ activationKey: activationKey.toUpperCase() });
 
-    if (device && device.imei && device.imei !== 'unknown' && device.imei !== imei) {
+    // Check if key was ALREADY bound and activated by a DIFFERENT physical phone
+    if (device && device.isDeviceOwner && device.fcmToken && device.fcmToken !== fcmToken && keyRecord.isUsed && keyRecord.status === 'activated') {
       return res.status(400).json({
         success: false,
-        message: 'This activation key has already been bound to another device.',
+        message: 'This activation key has already been activated on another device.',
       });
     }
 
     const shopkeeper = await Shopkeeper.findById(keyRecord.shopkeeperId);
 
     if (device) {
-      // Update the pre-created device with hardware details
-      device.imei = imei || device.imei || 'unknown';
+      // Update the pre-created device with actual phone hardware details & device identifier
+      if (imei && imei !== 'unknown') device.imei = imei;
       device.fcmToken = fcmToken;
       device.osVersion = androidVersion || device.osVersion || 'unknown';
       if (deviceModel) device.deviceModel = deviceModel;
       device.isDeviceOwner = true;
       device.isOnline = true;
       device.lastSeen = new Date();
-      device.registeredAt = new Date();
+      if (!device.registeredAt) device.registeredAt = new Date();
       await device.save();
     } else {
       // Fallback: If no pre-created device record exists, create one directly (safeguard)
