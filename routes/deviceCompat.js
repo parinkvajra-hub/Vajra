@@ -363,6 +363,28 @@ router.post('/command-status', async (req, res) => {
         device.isLocked = false;
         await device.save();
       }
+
+      // Mark device & activation key as Completed when release (terminate_owner) command executes
+      if (
+        commandLog.commandType === 'TERMINATE_OWNER_PERMISSION' ||
+        commandLog.commandId === 'terminate_owner' ||
+        commandLog.commandId === 'release'
+      ) {
+        device.isCompleted = true;
+        device.status = 'Completed';
+        device.isActive = false;
+        device.deactivatedAt = new Date();
+        device.appliedTags = new Map();
+        await device.save();
+
+        if (device.activationKey) {
+          await ActivationKey.updateOne(
+            { key: device.activationKey.toUpperCase() },
+            { $set: { status: 'completed' } }
+          );
+        }
+        console.log(`✅ Device ${device.deviceId} marked as Completed following release termination.`);
+      }
     }
     if (status === 'failed') {
       updateFields.failedAt = new Date();
