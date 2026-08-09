@@ -12,6 +12,7 @@ const router = express.Router();
 
 const CommandLog = require('../models/CommandLog');
 const Device = require('../models/Device');
+const ActivationKey = require('../models/ActivationKey');
 const Ticket = require('../models/Ticket');
 const Shopkeeper = require('../models/Shopkeeper');
 const crypto = require('crypto');
@@ -582,7 +583,7 @@ router.put('/:logId/status', async (req, res) => {
           commandLog.commandType === 'TERMINATE_OWNER_PERMISSION' ||
           commandLog.commandId === 'terminate_owner'
         ) {
-          await Device.findByIdAndUpdate(commandLog.deviceId, {
+          const targetDev = await Device.findByIdAndUpdate(commandLog.deviceId, {
             $set: {
               isCompleted: true,
               status: 'Completed',
@@ -590,7 +591,13 @@ router.put('/:logId/status', async (req, res) => {
               deactivatedAt: new Date(),
               appliedTags: {}
             }
-          });
+          }, { new: true });
+          if (targetDev && targetDev.activationKey) {
+            await ActivationKey.updateOne(
+              { key: targetDev.activationKey.toUpperCase() },
+              { $set: { status: 'completed' } }
+            );
+          }
           console.log(`✅ Device ${commandLog.deviceId} marked as Completed following release termination.`);
         }
       } catch (tagErr) {
