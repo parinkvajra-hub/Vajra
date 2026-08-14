@@ -20,7 +20,7 @@ router.use(authenticate, authorizeShopkeeper);
 // ─── GET / — Get own profile ─────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const shopkeeper = await Shopkeeper.findById(req.user.id).select('-password');
+    const shopkeeper = req.user.doc || (await Shopkeeper.findById(req.user.id).select('-password'));
 
     if (!shopkeeper) {
       return res.status(404).json({
