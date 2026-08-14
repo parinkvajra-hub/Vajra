@@ -111,7 +111,12 @@ router.get('/', async (req, res) => {
 
     // Scope to shopkeeper's own devices and exclude shopkeeper-deleted devices
     if (req.user.role === 'shopkeeper') {
-      baseFilter.shopkeeperId = req.user.id;
+      const mongoose = require('mongoose');
+      const shopkeeperObjectId = mongoose.Types.ObjectId.isValid(req.user.id)
+        ? new mongoose.Types.ObjectId(req.user.id)
+        : req.user.id;
+
+      baseFilter.shopkeeperId = { $in: [req.user.id, shopkeeperObjectId] };
       baseFilter.isDeletedByShopkeeper = { $ne: true };
     }
 
