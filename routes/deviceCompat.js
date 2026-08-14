@@ -456,9 +456,13 @@ router.post('/verify-release-code', async (req, res) => {
     }
 
     const cleanCode = releaseCode.trim().toUpperCase();
-    const device = await Device.findOne({
-      $or: [{ deviceId }, { _id: deviceId }],
-    });
+
+    // Query by custom deviceId string field first.
+    // Only fall back to _id if deviceId looks like a valid ObjectId (24-char hex).
+    let device = await Device.findOne({ deviceId });
+    if (!device && /^[a-f\d]{24}$/i.test(deviceId)) {
+      device = await Device.findById(deviceId);
+    }
 
     if (!device) {
       return res.status(404).json({
