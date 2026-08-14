@@ -432,9 +432,12 @@ router.post('/activate', authorizeShopkeeper, validate(activateDeviceSchema), as
     const balanceIosAfter = shopkeeper.iosCredits;
 
     // Step 4: Create device
+    const { generateReleaseCode } = require('../utils/helpers');
     const deviceId = generateDeviceId();
+    const releaseCode = generateReleaseCode();
     const device = await Device.create({
       deviceId,
+      releaseCode,
       activationKey: key,
       activationKeyId: activationKey._id,
       shopkeeperId: req.user.id,

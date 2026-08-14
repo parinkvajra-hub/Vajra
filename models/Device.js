@@ -23,6 +23,11 @@ const deviceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    releaseCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
 
     // Customer Info
     customerName: {

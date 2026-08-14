@@ -40,12 +40,17 @@ const generateTicketId = (lastTicketNumber) => {
  * Generate a unique device ID using base-36 timestamp.
  * @returns {string} e.g. "dev-lz1abc2d"
  */
-const generateDeviceId = () => {
-  return `dev-${Date.now().toString(36)}`;
+/**
+ * Generate a 6-character alphanumeric release code.
+ * @returns {string} e.g. "A7X9K2"
+ */
+const generateReleaseCode = () => {
+  return randomChars(6);
 };
 
 module.exports = {
   generateActivationKey,
   generateTicketId,
   generateDeviceId,
+  generateReleaseCode,
 };
