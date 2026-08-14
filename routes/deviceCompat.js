@@ -502,17 +502,23 @@ router.post('/verify-release-code', async (req, res) => {
     }
 
     // Log release command execution
-    await CommandLog.create({
-      deviceId: device.deviceId,
-      shopkeeperId: device.shopkeeperId,
-      commandType: 'TERMINATE_OWNER_PERMISSION',
-      commandId: 'release',
-      commandLabel: 'Release Application',
-      category: 'actions',
-      status: 'executed',
-      executedAt: new Date(),
-      mode: 'online',
-    });
+    // CommandLog.deviceId is an ObjectId ref, so we use device._id (not device.deviceId string)
+    try {
+      await CommandLog.create({
+        deviceId: device._id,
+        shopkeeperId: device.shopkeeperId,
+        commandType: 'TERMINATE_OWNER_PERMISSION',
+        commandId: 'release',
+        commandLabel: 'Release Application',
+        category: 'actions',
+        status: 'executed',
+        executedAt: new Date(),
+        mode: 'online',
+      });
+    } catch (logErr) {
+      // Don't fail the release if only the log entry fails
+      console.warn('CommandLog write skipped:', logErr.message);
+    }
 
     console.log(`✅ Release code verified! Device ${device.deviceId} marked as Completed.`);
 
