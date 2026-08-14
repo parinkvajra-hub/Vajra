@@ -192,6 +192,8 @@ const deviceSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { flattenMaps: true },
+    toObject: { flattenMaps: true },
   }
 );
 
